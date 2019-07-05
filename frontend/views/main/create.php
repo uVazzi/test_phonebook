@@ -5,8 +5,8 @@ use yii\helpers\Html;
 /* @var $this yii\web\View */
 /* @var $model common\models\domains\User */
 
-$this->title = 'Create User';
-$this->params['breadcrumbs'][] = ['label' => 'Users', 'url' => ['index']];
+$this->title = 'Добавить контакт';
+$this->params['breadcrumbs'][] = ['label' => 'Список контактов', 'url' => ['index']];
 $this->params['breadcrumbs'][] = $this->title;
 ?>
 <div class="user-create">

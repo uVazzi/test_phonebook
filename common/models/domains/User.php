@@ -3,6 +3,9 @@
 namespace common\models\domains;
 
 use Yii;
+use yii\behaviors\TimestampBehavior;
+use yii\db\ActiveRecord;
+use yii2tech\ar\softdelete\SoftDeleteBehavior;
 
 /**
  * This is the model class for table "user".
@@ -28,16 +31,33 @@ class User extends \yii\db\ActiveRecord
         return 'user';
     }
 
+    public function behaviors()
+    {
+        return [
+            'timestamp' => [
+                'class' => TimestampBehavior::className(),
+                'attributes' => [
+                    ActiveRecord::EVENT_BEFORE_INSERT => ['create_at', 'update_at'],
+                    ActiveRecord::EVENT_BEFORE_UPDATE => ['update_at'],
+                ],
+            ],
+            'softDelete' => [
+                'class' => SoftDeleteBehavior:: className(),
+                'softDeleteAttributeValues' => ['is_deleted' => true], 'replaceRegularDelete' => true
+            ],
+        ];
+    }
+
     /**
      * {@inheritdoc}
      */
     public function rules()
     {
         return [
-            [['name', 'surname', 'patronymic', 'date_birth', 'create_at', 'update_at'], 'required'],
-            [['create_at', 'update_at', 'is_deleted'], 'integer'],
+            [['date_birth'], 'date', 'format' => 'd.m.y'],
             [['name', 'surname', 'patronymic'], 'string', 'max' => 50],
-            [['date_birth'], 'string', 'max' => 10],
+            [['name', 'surname', 'patronymic'], 'filter', 'filter' => 'trim', 'skipOnArray' => true],
+            [['name', 'surname', 'patronymic', 'date_birth'], 'required'],
         ];
     }
 
@@ -48,12 +68,12 @@ class User extends \yii\db\ActiveRecord
     {
         return [
             'id' => 'ID',
-            'name' => 'Name',
-            'surname' => 'Surname',
-            'patronymic' => 'Patronymic',
-            'date_birth' => 'Date Birth',
-            'create_at' => 'Create At',
-            'update_at' => 'Update At',
+            'name' => 'Имя',
+            'surname' => 'Фамилия',
+            'patronymic' => 'Отчество',
+            'date_birth' => 'Дата рождения',
+            'create_at' => 'Создан',
+            'update_at' => 'Последнее изменение',
             'is_deleted' => 'Is Deleted',
         ];
     }
@@ -63,6 +83,6 @@ class User extends \yii\db\ActiveRecord
      */
     public function getPhones()
     {
-        return $this->hasMany(Phone::className(), ['user_id' => 'id']);
+        return $this->hasMany(Phone::className(), ['user_id' => 'id'])->andWhere(['is_deleted' => false]);
     }
 }
