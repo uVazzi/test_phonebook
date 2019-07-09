@@ -2,6 +2,7 @@
 
 namespace frontend\controllers;
 
+use common\models\searches\PhoneSearch;
 use Yii;
 use common\models\domains\User;
 use common\models\searches\UserSearch;
@@ -64,8 +65,12 @@ class MainController extends Controller
      */
     public function actionView($id)
     {
+        $searchModel = new PhoneSearch();
+        $dataProvider = $searchModel->search(Yii::$app->request->queryParams, $id);
+
         return $this->render('view', [
             'model' => $this->findModel($id),
+            'dataProvider' => $dataProvider,
         ]);
     }
 
@@ -78,13 +83,20 @@ class MainController extends Controller
     {
         $model = new User();
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
-            return $this->redirect(['view', 'id' => $model->id]);
+        if ($model->loadWithRelations(Yii::$app->request->post()) && $model->validate() && $model->validatePhones()) {
+            if ($model->transactionsWithRelations()) {
+                return $this->redirect(['view', 'id' => $model->id]);
+            } else {
+                \Yii::$app->getSession()->setFlash('error', 'Ошибка сохранения');
+                return $this->render('create', [
+                    'model' => $model,
+                ]);
+            }
+        } else {
+            return $this->render('create', [
+                'model' => $model,
+            ]);
         }
-
-        return $this->render('create', [
-            'model' => $model,
-        ]);
     }
 
     /**
@@ -98,13 +110,20 @@ class MainController extends Controller
     {
         $model = $this->findModel($id);
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
-            return $this->redirect(['view', 'id' => $model->id]);
+        if ($model->loadWithRelations(Yii::$app->request->post()) && $model->validate() && $model->validatePhones()) {
+            if ($model->transactionsWithRelations()) {
+                return $this->redirect(['view', 'id' => $model->id]);
+            } else {
+                \Yii::$app->getSession()->setFlash('error', 'Ошибка сохранения');
+                return $this->render('create', [
+                    'model' => $model,
+                ]);
+            }
+        } else {
+            return $this->render('create', [
+                'model' => $model,
+            ]);
         }
-
-        return $this->render('update', [
-            'model' => $model,
-        ]);
     }
 
     /**

@@ -2,7 +2,12 @@
 
 namespace common\models\domains;
 
+use common\models\enums\NumberType;
 use Yii;
+use yii\behaviors\TimestampBehavior;
+use yii\db\ActiveRecord;
+use yii2tech\ar\softdelete\SoftDeleteBehavior;
+use borales\extensions\phoneInput\PhoneInputValidator;
 
 /**
  * This is the model class for table "phone".
@@ -27,15 +32,34 @@ class Phone extends \yii\db\ActiveRecord
         return 'phone';
     }
 
+    public function behaviors()
+    {
+        return [
+            'timestamp' => [
+                'class' => TimestampBehavior::className(),
+                'attributes' => [
+                    ActiveRecord::EVENT_BEFORE_INSERT => ['create_at', 'update_at'],
+                    ActiveRecord::EVENT_BEFORE_UPDATE => ['update_at'],
+                ],
+            ],
+            'softDelete' => [
+                'class' => SoftDeleteBehavior:: className(),
+                'softDeleteAttributeValues' => ['is_deleted' => true], 'replaceRegularDelete' => true
+            ],
+        ];
+    }
+
     /**
      * {@inheritdoc}
      */
     public function rules()
     {
         return [
-            [['type', 'number', 'user_id', 'create_at', 'update_at'], 'required'],
+            [['type', 'number'], 'required'],
             [['type', 'user_id', 'create_at', 'update_at', 'is_deleted'], 'integer'],
-            [['number'], 'string', 'max' => 20],
+            ['type', 'in', 'range' => NumberType::getConstantsByName()],
+            [['number'], 'string'],
+            [['number'], PhoneInputValidator::className()],
             [['user_id'], 'exist', 'skipOnError' => true, 'targetClass' => User::className(), 'targetAttribute' => ['user_id' => 'id']],
         ];
     }
@@ -47,8 +71,8 @@ class Phone extends \yii\db\ActiveRecord
     {
         return [
             'id' => 'ID',
-            'type' => 'Type',
-            'number' => 'Number',
+            'type' => 'Тип',
+            'number' => 'Номер',
             'user_id' => 'User ID',
             'create_at' => 'Create At',
             'update_at' => 'Update At',

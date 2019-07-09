@@ -23,6 +23,9 @@ use yii2tech\ar\softdelete\SoftDeleteBehavior;
  */
 class User extends \yii\db\ActiveRecord
 {
+
+    protected $itemsToDelete;
+
     /**
      * {@inheritdoc}
      */
@@ -84,5 +87,87 @@ class User extends \yii\db\ActiveRecord
     public function getPhones()
     {
         return $this->hasMany(Phone::className(), ['user_id' => 'id'])->andWhere(['is_deleted' => false]);
+    }
+
+    /** Загружает данные в модель, заполняет связи
+     * @param $data
+     * @param null $formName
+     * @return bool
+     */
+    public function loadWithRelations($data, $formName = null)
+    {
+        if (empty($data)) {
+            return false;
+        }
+
+        $this->load($data);
+
+        $phones = $this->phones;
+        $idToItem = [];
+        foreach ($phones as $item) {
+            $idToItem[$item->id] = $item;
+        }
+        if (!empty($data['Phone'])) {
+            $actualItems = [];
+            $phonesFormData = $data['Phone'];
+            foreach ($phonesFormData as $item) {
+                if (!empty($item['id'])) {
+                    $phoneModel = $idToItem[$item['id']];
+                    unset($idToItem[$item['id']]);
+                } else {
+                    $phoneModel = new Phone();
+                }
+                $phoneModel->load($item, '');
+                $actualItems[] = $phoneModel;
+            }
+            $this->populateRelation('phones', $actualItems);
+        }
+        $this->itemsToDelete = array_values($idToItem);
+        return true;
+    }
+
+    /** Валидация номеров
+     * @return bool
+     */
+    public function validatePhones()
+    {
+        $hasError = false;
+        if (!empty($this->phones)) {
+            foreach ($this->phones as $item) {
+                if (!$item->validate()) {
+                    $hasError = true;
+                }
+            }
+        }
+        return !$hasError;
+    }
+
+    public function transactionsWithRelations()
+    {
+        $hasError = false;
+        $transaction = \Yii::$app->db->beginTransaction();
+        if ($this->save(false)) {
+            /** @var ActiveRecord $itemToDelete */
+            foreach ($this->itemsToDelete as $itemToDelete) {
+                if ($itemToDelete->delete()) {
+                    $hasError = true;
+                }
+            }
+            foreach ($this->phones as $item) {
+                $item->user_id = $this->id;
+                if (!$item->save(false)) {
+                    $hasError = true;
+                }
+            }
+        } else {
+            $hasError = true;
+        }
+        if ($hasError == false) {
+            $transaction->commit();
+            return true;
+        } else {
+            $transaction->rollback();
+            return false;
+        }
     }
 }
